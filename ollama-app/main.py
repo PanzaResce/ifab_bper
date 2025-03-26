@@ -1,6 +1,6 @@
 import requests
 
-OLLAMA_URL = "http://172.30.96.1:11434/api/generate"
+OLLAMA_URL = "http://localhost:11434/api/generate"
 
 def call_ollama():
     payload = {
