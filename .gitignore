@@ -401,3 +401,7 @@ FodyWeavers.xsd
 
 # Project related
 .env
+
+# API Keys file 
+
+APIKeys.py
