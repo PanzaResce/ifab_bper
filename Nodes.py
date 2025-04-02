@@ -7,6 +7,49 @@ import os
 from APIKeys import Kaggle_API
 from kaggle.api.kaggle_api_extended import KaggleApi
 
+#Code 
+
+class CodeExecutionNode(Node): #Python
+    def __init__(self, name="CodeExecutionNode"):
+        super().__init__(name=name)
+
+    def run(self, code: str) -> dict:
+        """
+        Executes a given Python code string and returns the result or any error encountered.
+
+        Args:
+            code (str): The Python code to be executed.
+
+        Returns:
+            dict: A dictionary containing either the result or the error message.
+        """
+        local_context = {}
+        try:
+            exec(code, {}, local_context)
+            result = {k: v for k, v in local_context.items() if not k.startswith("_")}
+            return {"success": True, "result": result}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+
+
+#LLM 
+class LLMNode(Node):
+    '''
+    Chiama un LLM, generica utilità  
+    '''
+    def __init__(self, name: str):
+        super().__init__(name)
+
+    def run(self, prompt: str) -> str:
+        from APIKeys import googleAPI
+        return queryGemini(prompt, googleAPI)
+
+
+
+
+#Data Import 
+
 class KaggleImport(Node):
     '''
     Ritorna oggetto numpy con tabella di kaggle
@@ -51,20 +94,11 @@ class KaggleImport(Node):
     
     def run(self, dataType: str, identifier: str) -> np.ndarray:
         self.authenticate()
+
         if dataType == 'csv':
             return self.load_csv_as_np(identifier)
         else:
             raise ValueError("Tipo di dati non supportato. Usa 'csv'.")
-
-#LLM 
-class LLMNode(Node):
-    def __init__(self, name: str):
-        super().__init__(name)
-
-    def run(self, prompt: str) -> str:
-        from APIKeys import googleAPI
-        return queryGemini(prompt, googleAPI)
-
 #DATA-GEN
 
 
@@ -139,8 +173,6 @@ class PatternedDataNode(Node):
 
 
 #DATA TRASFORM
-
-
 
 class NoiseInjectionNode(Node):
 
