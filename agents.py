@@ -71,7 +71,7 @@ def create_generator_agent_node(llm, tools):
 
     return generator_node
 
-def schema_analyzer(state: OverallState, llm, name):
+def schema_analyzer(state: GlobalState, llm, name):
     # print(state.df_row_schema)
     system_prompt = SystemMessage("""Generate a random name for a dataframe column""")
     

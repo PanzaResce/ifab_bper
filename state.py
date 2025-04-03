@@ -8,7 +8,7 @@ class DataframeCol(BaseModel):
     column_descr: str = Field(description="The description of the column")
     column_type: str = Field(description="The data type of the column")
 
-class OverallState(BaseModel):
+class GlobalState(BaseModel):
     df_row_schema: Optional [List[DataframeCol]] = Field(
         description="The schema of the dataframe, including its column names, description and data",
         default=[]
@@ -32,7 +32,6 @@ class OverallState(BaseModel):
         description="Natural language guidance from plausibility checker suggesting improvements to the synthetic row",
         default="")
     # messages: Annotated[List[AnyMessage], add_messages]
-    # to prevent infinite loops we need iteration count and iteration limit
     iteration_count: Optional[int] = Field(
         description="The number of iterations the graph has run",
         default=0)
