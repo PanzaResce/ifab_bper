@@ -1,28 +1,34 @@
-from langgraph import Node
 from queryComp import queryGemini
 import numpy as np
 import pandas as pd 
-from  kaggle import api
 import os 
 from APIKeys import Kaggle_API
 from kaggle.api.kaggle_api_extended import KaggleApi
+from typing import List, Dict
+import json
+from io import StringIO
 
-#Code 
 
-class CodeExecutionNode(Node): #Python
+
+# Generic LLM 
+class LLMNode:
+    def __init__(self, name: str):
+        self.name = name
+        from APIKeys import Google_AI_Studio
+        self.googleAPI = Google_AI_Studio
+
+    def run(self, prompt: str) -> str:
+        return queryGemini(prompt, self.googleAPI)
+
+    def __call__(self, prompt: str) -> str:
+        return self.run(prompt)
+
+# Code execution
+class CodeExecutionNode:
     def __init__(self, name="CodeExecutionNode"):
-        super().__init__(name=name)
+        self.name = name
 
     def run(self, code: str) -> dict:
-        """
-        Executes a given Python code string and returns the result or any error encountered.
-
-        Args:
-            code (str): The Python code to be executed.
-
-        Returns:
-            dict: A dictionary containing either the result or the error message.
-        """
         local_context = {}
         try:
             exec(code, {}, local_context)
@@ -31,78 +37,85 @@ class CodeExecutionNode(Node): #Python
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def __call__(self, code: str) -> dict:
+        return self.run(code)
 
+# Kaggle Data Import
 
-#LLM 
-class LLMNode(Node):
-    '''
-    Chiama un LLM, generica utilità  
-    '''
+class KaggleImport:
     def __init__(self, name: str):
-        super().__init__(name)
-
-    def run(self, prompt: str) -> str:
-        from APIKeys import googleAPI
-        return queryGemini(prompt, googleAPI)
-
-
-
-
-#Data Import 
-
-class KaggleImport(Node):
-    '''
-    Ritorna oggetto numpy con tabella di kaggle
-    '''
-    def __init__(self, name: str):
-        super().__init__(name)
+        self.name = name
         self.api = KaggleApi()
-        self.api.authenticate()
-    
-    def authenticate(self):  # esempio identifier: 'sgpjesus/bank-account-fraud-dataset-neurips-2022'
+
+    def authenticate(self):
         os.environ['KAGGLE_USERNAME'] = Kaggle_API["Username"]
         os.environ['KAGGLE_KEY'] = Kaggle_API["API_Key"]
-
+        
         self.api.authenticate()
+        #del os.environ['KAGGLE_USERNAME']
+        #del os.environ['KAGGLE_KEY']
 
-        del os.environ['KAGGLE_USERNAME']
-        del os.environ['KAGGLE_KEY']
-
-    def load_csv_as_np(self, identifier: str) -> np.ndarray: #assume ci sia solo un file nel target 
-        """Load CSV file from Kaggle as a NumPy array."""
-        
-        # Scarica il dataset dalla fonte Kaggle
+    def load_csv_as_np(self, identifier: str) -> np.ndarray:
         self.api.dataset_download_files(identifier, path='datasets/kaggle', unzip=True)
-        
-        # Cerca il file CSV estratto nella cartella specificata
         extracted_files = os.listdir('datasets/kaggle')
         csv_files = [file for file in extracted_files if file.endswith('.csv')]
-        
         if not csv_files:
-            raise FileNotFoundError("Non è stato trovato nessun file CSV nella cartella specificata.")
-        
+            raise FileNotFoundError("No CSV file found.")
         file_name = f'datasets/kaggle/{csv_files[0]}'
-        
-        # Carica il file CSV in un DataFrame pandas
         df = pd.read_csv(file_name)
-        
-        # Rimuove il file dopo l'utilizzo
         os.remove(file_name)
-        
-        # Restituisce il DataFrame come array NumPy
         return df.to_numpy()
-    
+
     def run(self, dataType: str, identifier: str) -> np.ndarray:
         self.authenticate()
-
         if dataType == 'csv':
             return self.load_csv_as_np(identifier)
         else:
-            raise ValueError("Tipo di dati non supportato. Usa 'csv'.")
+            raise ValueError("Unsupported data type. Use 'csv'.")
+
+    def __call__(self, dataType: str, identifier: str) -> np.ndarray:
+        return self.run(dataType, identifier)
+
+# Description Generator Node
+
+class DescriptionGeneratorNode:
+    def __init__(self, llm):
+        self.llm = llm
+
+    def run(self, prompt: str) -> List[Dict[str, str]]:
+        description_prompt = f"""
+        You are an agent that generates column names and descriptions for a dataset.
+        Task: {prompt}
+        """
+        response = self.llm.run(description_prompt)
+        
+        return response
+
+    def __call__(self, prompt: str) -> List[Dict[str, str]]:
+        return self.run(prompt)
+
+# Table Generator Node
+class TableGeneratorNode:
+    def __init__(self, llm):
+        self.llm = llm
+
+    def run(self, columns: str) -> pd.DataFrame:
+        prompt = f"""
+        Generate structured tabular data based on the specifications:
+        Columns:
+        {columns}
+        
+        """
+        csv_data = self.llm.run(prompt)
+        return pd.read_csv(StringIO(csv_data))
+
+    def __call__(self, columns: str) -> pd.DataFrame:
+        return self.run(columns)
+
+
 #DATA-GEN
 
-
-class RandomDataNode(Node):
+class RandomDataNode():
     '''
     Generates random data for specified columns using uniform, normal, or custom distributions.
     '''
@@ -123,7 +136,7 @@ class RandomDataNode(Node):
             return pd.Series(data, name=self.name)
 
 
-class CorrelatedDataNode(Node):
+class CorrelatedDataNode():
     '''
     Generates data that is correlated to other columns (e.g., age vs. income, height vs. weight).
     '''
@@ -135,7 +148,7 @@ class CorrelatedDataNode(Node):
         correlated_data = (reference_data * correlation) + noise_data * (1 - correlation)
         return pd.Series(correlated_data, name=self.name)
     
-class CategoricalDataNode(Node):
+class CategoricalDataNode():
     '''
     Creates categorical variables with specified probabilities (e.g., gender, occupation, region).
     '''
@@ -150,7 +163,7 @@ class CategoricalDataNode(Node):
         return pd.Series(data, name=self.name)
     
 
-class PatternedDataNode(Node):
+class PatternedDataNode():
     '''
     Generates data according to specific rules or patterns (e.g., periodic, exponential growth).
     '''
@@ -174,7 +187,7 @@ class PatternedDataNode(Node):
 
 #DATA TRASFORM
 
-class NoiseInjectionNode(Node):
+class NoiseInjectionNode():
 
     '''
     Adds noise to numeric columns to simulate measurement errors or uncertainty.
@@ -185,7 +198,7 @@ class NoiseInjectionNode(Node):
     def run(self):
         pass
 
-class ScalingNode(Node):
+class ScalingNode():
     '''
     Scales data using standardization, normalization, or custom scaling functions.
     '''
@@ -195,7 +208,7 @@ class ScalingNode(Node):
     def run(self):
         pass
 
-class MissingDataNode(Node):
+class MissingDataNode():
     '''
     Introduces missing values based on specified probabilities or patterns.
 
@@ -205,7 +218,7 @@ class MissingDataNode(Node):
     
     def run(self):
         pass
-class EncodingNode(Node):
+class EncodingNode():
     '''
     Converts categorical data to numerical representations (e.g., one-hot encoding, label encoding).
     '''
@@ -218,7 +231,7 @@ class EncodingNode(Node):
 
 
 # Data Val 
-class SchemaValidationNode(Node):
+class SchemaValidationNode():
     '''
     Ensures generated data adheres to a predefined schema (e.g., column types, ranges, etc.).
     '''
@@ -227,7 +240,7 @@ class SchemaValidationNode(Node):
     
     def run(self):
         pass
-class DistributionComparisonNode(Node):
+class DistributionComparisonNode():
     '''
     Compares generated data distributions to real-world data distributions for realism assessment.
     '''
@@ -238,7 +251,7 @@ class DistributionComparisonNode(Node):
         pass
 
 
-class CorrelationAnalysisNode(Node):
+class CorrelationAnalysisNode():
     '''
     Ensures specified correlations are maintained between generated columns.
 
@@ -249,7 +262,7 @@ class CorrelationAnalysisNode(Node):
     def run(self):
         pass
 
-class DataQualityNode(Node):
+class DataQualityNode():
     '''
     Checks for anomalies or inconsistencies in the generated data (e.g., duplicates, missing values).
     '''
@@ -259,7 +272,7 @@ class DataQualityNode(Node):
     def run(self):
         pass
 # Data Output 
-class CSVOutputNode(Node):
+class CSVOutputNode():
     '''
     Saves generated data to a CSV file.
     '''
