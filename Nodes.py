@@ -101,13 +101,13 @@ class TableGeneratorNode:
 
     def run(self, columns: str) -> pd.DataFrame:
         prompt = f"""
-        Generate structured tabular data based on the specifications:
+        Generate structured tabular data based on the specifications, the data needs to be output in CSV like format, only produce the data and header, do not produce anything else. 
         Columns:
         {columns}
         
         """
         csv_data = self.llm.run(prompt)
-        return pd.read_csv(StringIO(csv_data))
+        return csv_data             #pd.read_csv(StringIO(csv_data))
 
     def __call__(self, columns: str) -> pd.DataFrame:
         return self.run(columns)
