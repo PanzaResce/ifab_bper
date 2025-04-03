@@ -85,10 +85,11 @@ class DescriptionGeneratorNode:
     def run(self, prompt: str) -> List[Dict[str, str]]:
         description_prompt = f"""
         You are an agent that generates column names and descriptions for a dataset.
+        Do not add reccomandations of any sort, do not ask for further instructions, only output what has been asked of you in the form column name and explaination.  
         Task: {prompt}
         """
         response = self.llm.run(description_prompt)
-        
+        #print(response.text)
         return response
 
     def __call__(self, prompt: str) -> List[Dict[str, str]]:
@@ -99,7 +100,7 @@ class TableGeneratorNode:
     def __init__(self, llm):
         self.llm = llm
 
-    def run(self, columns: str) -> pd.DataFrame:
+    def run(self, columns: str) :
         prompt = f"""
         Generate structured tabular data based on the specifications, the data needs to be output in CSV like format, only produce the data and header, do not produce anything else. 
         Columns:
@@ -107,9 +108,10 @@ class TableGeneratorNode:
         
         """
         csv_data = self.llm.run(prompt)
-        return csv_data             #pd.read_csv(StringIO(csv_data))
+        
+        return pd.read_csv(StringIO(csv_data.text))
 
-    def __call__(self, columns: str) -> pd.DataFrame:
+    def __call__(self, columns: str):
         return self.run(columns)
 
 
