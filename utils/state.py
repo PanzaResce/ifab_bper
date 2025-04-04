@@ -8,26 +8,38 @@ class DataframeCol(BaseModel):
     column_descr: str = Field(description="The description of the column")
     column_type: str = Field(description="The data type of the column")
 
+class DataframeSchema(BaseModel):
+    schema: List[DataframeCol] = Field(
+        description="The schema of the dataframe.",
+    )
+
+class GeneratedRow(BaseModel):
+    generated_row: Dict[str, str] = Field(description="The generated row, containing the column names alongside their corresponding values.")
+
 class GlobalState(BaseModel):
-    df_row_schema: Optional [List[DataframeCol]] = Field(
-        description="The schema of the dataframe, including its column names, description and data",
-        default=[]
-        )
+    # df_row_schema: Optional [List[DataframeCol]] = Field(
+    #     description="The schema of the dataframe, including its column names, description and data",
+    #     default=[]
+    #     )
+    df_row_schema: Optional [DataframeSchema] = Field(
+        description="The schema of the dataframe",
+        default=""
+    )
     stats: Optional [Dict[str, Any]] = Field(
         description="Statistical profile of the data to guide generation",
         default={})
-    generated_row: Optional [List[DataframeCol]] = Field(
-        description="The synthetic row generated.",
-        default=[])
-    is_row_valid: Optional [bool] = Field(
-        description="Whether the synthetic row generetad is valid given the input schema",
-        default=None)
-    is_row_plausible: Optional [bool] = Field(
-        description="Whether the synthetic row generetad is plausible given the input dataset",
-        default=None)
-    validation_errors: Optional[Dict[str, str]] = Field(
+    # generated_row: Optional [List[DataframeCol]] = Field(
+    #     description="The synthetic row generated.",
+    #     default=[])
+    generated_row: Optional [GeneratedRow] = Field(
+        description="The synthetic row generated",
+        default="")
+    validation_errors: Optional[str] = Field(
         description="Schema violations for each row during validation, if any",
-        default={})
+        default="")
+    validation_feedback: Optional[str] = Field(
+        description="Feedback to fix the generated row",
+        default="")
     plausibility_feedback: Optional[str] = Field(
         description="Natural language guidance from plausibility checker suggesting improvements to the synthetic row",
         default="")
