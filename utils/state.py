@@ -25,7 +25,7 @@ class GlobalState(BaseModel):
         description="The schema of the dataframe",
         default=""
     )
-    stats: Optional [Dict[str, Any]] = Field(
+    stats: Optional [Any] = Field(
         description="Statistical profile of the data to guide generation",
         default={})
     # generated_row: Optional [List[DataframeCol]] = Field(
