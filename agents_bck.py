@@ -81,7 +81,7 @@ def schema_analyzer(state: GlobalState, llm, name):
     agent_response = llm.invoke([system_prompt])
     return {"df_row_schema": [fake_col1, fake_col2]}
 
-# def generator(state: OverallState, llm, name):
+# def generator(state: GlobalState, llm, name):
 #     # print(state.df_row_schema)
 #     system_prompt = SystemMessage(f"""Generate a random record given this input schema: {state.df_row_schema}""")
 #     agent_response = llm.invoke([system_prompt])

@@ -24,13 +24,10 @@ def process_page_content(url: str) -> str:
     return soup.get_text()
 
 def python_repl(df):
-    repl = PythonREPL()
     python_repl = PythonREPL()
 
-    # Pass the dataframe into the globals dictionary of the PythonREPL instance
-    repl.globals['df'] = df
+    python_repl.globals['df'] = df
 
-    # You can create the tool to pass to an agent
     repl_tool = Tool(
         name="python_repl",
         description="A Python shell. Use this to execute python commands. Input should be a valid python command. If you want to see the output of a value, you should print it out with `print(...)`.",
@@ -41,4 +38,4 @@ def python_repl(df):
 
 
 def get_tools(repl_df):
-   return [internet_search_DDGO, process_page_content, python_repl(repl_df)]
+   return [python_repl(repl_df)]
