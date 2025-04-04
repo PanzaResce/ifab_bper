@@ -8,7 +8,7 @@ class Feedback:
         self.llm = llm.bind_tools(self.tools)
     
     def __call__(self, state: GlobalState):
-        # print(state)
+        print(f"ERROR STATE: {state}")
         errors = state.validation_errors
         # print(f"SCHEMA:\n{schema}")
 

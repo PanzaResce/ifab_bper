@@ -14,7 +14,7 @@ from utils.state import GlobalState
 from agents.schema_analyzer import SchemaAnalyzer
 from agents.generator import Generator
 from agents.feedback import Feedback
-
+from utils.nodes import SchemaDescriptorNode, ValidityChecker
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="")
@@ -41,25 +41,30 @@ def is_valid_record(record: dict, reference_df: pd.DataFrame, check_values: bool
     """
     # Check if keys match columns
     if set(record.keys()) != set(reference_df.columns):
-        return False
+        return "The record keys does not match with the input schema"
 
     # Check data types
     for key, value in record.items():
         expected_type = reference_df[key].dtype
         try:
             pd.Series([value], dtype=expected_type)
-        except ValueError:
-            return False
+        except ValueError as e:
+            return e
+    
+    return ""
 
-def validity_checker(state: GlobalState, df):
-    # print(state.generated_row.generated_row)
-    print(f"NUM ITER: {state.iteration_count}")
-    # print(df)
-    generated_row = state.generated_row
-    if is_valid_record(generated_row.generated_row, df) or state.iteration_count > 2:
-        return END
-    else:
-        return "validation_feedback_agent"
+# def validity_checker(state: GlobalState, df):
+#     # print(state.generated_row.generated_row)
+#     print(f"NUM ITER: {state.iteration_count}")
+#     # print(df)
+#     generated_row = state.generated_row
+#     error = is_valid_record(generated_row.generated_row, df)
+#     if error == "" or state.iteration_count > 2:
+#         return END
+#     else:
+#         state.validation_errors = error
+#         print(f"ERROR: {state.validation_errors}")
+#         return "validation_feedback_agent"
 
 def create_graph(llm, df):
     builder = StateGraph(GlobalState)
@@ -67,16 +72,21 @@ def create_graph(llm, df):
     analyzer = SchemaAnalyzer(llm)
     generator = Generator(llm)
     validation_feedback = Feedback(llm)
+    schema_descriptor = SchemaDescriptorNode(df)
+    validity_checker = ValidityChecker(df, goto_if_false="validation_feedback_agent")
 
     # Define nodes: these do the work
-    builder.add_node("schema_analyzer", analyzer)
+    # builder.add_node("schema_analyzer", analyzer)
+    builder.add_node("schema_descriptor", schema_descriptor)
     builder.add_node("generator", generator)
     builder.add_node("validation_feedback_agent", validation_feedback)
-    builder.set_entry_point("schema_analyzer")
+    builder.add_node("validity_checker", validity_checker)
+    builder.set_entry_point("schema_descriptor")
 
-    builder.add_edge("schema_analyzer", "generator")
+    builder.add_edge("schema_descriptor", "generator")
+    builder.add_edge("generator", "validity_checker")
+    # builder.add_conditional_edges("generator", validity_checker, [END, "validation_feedback_agent"])
     builder.add_edge("validation_feedback_agent", "generator")
-    builder.add_conditional_edges("generator", lambda state: validity_checker(state, df))
 
     # builder.add_edge("generator", END)
 
