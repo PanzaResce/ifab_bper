@@ -48,13 +48,8 @@ class KaggleImport:
         self.api = KaggleApi()
 
     def authenticate(self):
-        os.environ['KAGGLE_USERNAME'] = Kaggle_API["Username"]
-        os.environ['KAGGLE_KEY'] = Kaggle_API["API_Key"]
-        
         self.api.authenticate()
-        #del os.environ['KAGGLE_USERNAME']
-        #del os.environ['KAGGLE_KEY']
-
+      
     def load_csv_as_np(self, identifier: str) -> np.ndarray:
         self.api.dataset_download_files(identifier, path='datasets/kaggle', unzip=True)
         extracted_files = os.listdir('datasets/kaggle')
@@ -75,6 +70,84 @@ class KaggleImport:
 
     def __call__(self, dataType: str, identifier: str) -> np.ndarray:
         return self.run(dataType, identifier)
+
+# Schema Picker 
+class SchemaDescriptorNode():
+    def __init__(self, name):
+        self.name = name
+
+    
+
+    def __call__(self, data) -> pd.DataFrame:
+        
+        dtype_mapping = {
+            'object': 'str',
+            'int64': 'int',
+            'int32': 'int',
+            'float64': 'float',
+            'float32': 'float',
+            'bool': 'bool',
+            'datetime64[ns]': 'datetime',
+            'timedelta64[ns]': 'timedelta',
+            'category': 'category',
+            'complex128': 'complex',
+            'complex64': 'complex',
+            'UInt8': 'int',
+            'UInt16': 'int',
+            'UInt32': 'int',
+            'UInt64': 'int',
+            'Int8': 'int',
+            'Int16': 'int',
+            'Int32': 'int',
+            'Int64': 'int',
+            'string': 'str',
+            'datetime64[ns, UTC]': 'datetime'}
+
+        if isinstance(data, pd.DataFrame):
+            pass
+        else:
+            data = self.castToDataFrame(data)
+            
+
+
+        friendly_dtypes = data.dtypes.replace(dtype_mapping)
+        friendly_dtypes_str = friendly_dtypes.to_string(header=False, index=True)
+        return friendly_dtypes_str
+    
+    def castToDataFrame(self, data):
+        if isinstance(data, pd.DataFrame):
+            return data
+
+        elif isinstance(data, pd.Series):
+            return data.to_frame()
+
+        elif isinstance(data, (np.ndarray, np.ma.MaskedArray)):
+            return pd.DataFrame(data)
+
+        elif isinstance(data, (list, dict)):
+            return pd.DataFrame(data)
+
+        elif isinstance(data, pd.Categorical):
+            return pd.DataFrame(pd.Series(data))
+
+       
+        else: 
+            raise ValueError("DataType non supportato")
+
+'''
+        elif isinstance(data, GeoDataFrame):
+            return pd.DataFrame(data)
+\ elif isinstance(data, dd.DataFrame):
+            return data.compute()
+        elif isinstance(data, PySparkDataFrame):
+            return data.toPandas()
+            
+        elif isinstance(data, pa.Table):
+            return data.to_pandas()
+        
+        elif isinstance(data, pa.Dataset):
+            return pq.read_table(data).to_pandas()
+'''
 
 # Description Generator Node
 
@@ -122,7 +195,7 @@ class RandomDataNode():
     Generates random data for specified columns using uniform, normal, or custom distributions.
     '''
     def __init__(self, name: str):
-        super().__init__(name)
+        self.name = name  
 
     def run(self, num_samples: int, distribution: str = 'normal', params: dict = None):
             if params is None:
@@ -143,7 +216,7 @@ class CorrelatedDataNode():
     Generates data that is correlated to other columns (e.g., age vs. income, height vs. weight).
     '''
     def __init__(self, name:str):
-        super().__init__(name)
+        self.name = name  
 
     def run(self, reference_data: pd.Series, correlation: float = 0.8, noise: float = 0.1):
         noise_data = np.random.normal(0, noise, size=len(reference_data))
@@ -155,8 +228,8 @@ class CategoricalDataNode():
     Creates categorical variables with specified probabilities (e.g., gender, occupation, region).
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name  
+
     def run(self, categories: list, probabilities: list, num_samples: int):
         if len(categories) != len(probabilities):
             raise ValueError("Categories and probabilities must have the same length.")
@@ -170,8 +243,7 @@ class PatternedDataNode():
     Generates data according to specific rules or patterns (e.g., periodic, exponential growth).
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name      
     def run(self, pattern_type: str = 'sin', num_samples: int = 100, amplitude: float = 1, frequency: float = 1):
         x = np.linspace(0, 2 * np.pi, num_samples)
         
@@ -195,8 +267,7 @@ class NoiseInjectionNode():
     Adds noise to numeric columns to simulate measurement errors or uncertainty.
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name      
     def run(self):
         pass
 
@@ -205,8 +276,7 @@ class ScalingNode():
     Scales data using standardization, normalization, or custom scaling functions.
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name      
     def run(self):
         pass
 
@@ -216,8 +286,7 @@ class MissingDataNode():
 
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name      
     def run(self):
         pass
 class EncodingNode():
@@ -225,8 +294,7 @@ class EncodingNode():
     Converts categorical data to numerical representations (e.g., one-hot encoding, label encoding).
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name      
     def run(self):
         pass
 
@@ -238,8 +306,7 @@ class SchemaValidationNode():
     Ensures generated data adheres to a predefined schema (e.g., column types, ranges, etc.).
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name      
     def run(self):
         pass
 class DistributionComparisonNode():
@@ -247,8 +314,7 @@ class DistributionComparisonNode():
     Compares generated data distributions to real-world data distributions for realism assessment.
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name      
     def run(self):
         pass
 
@@ -259,8 +325,7 @@ class CorrelationAnalysisNode():
 
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name      
     def run(self):
         pass
 
@@ -269,8 +334,7 @@ class DataQualityNode():
     Checks for anomalies or inconsistencies in the generated data (e.g., duplicates, missing values).
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name      
     def run(self):
         pass
 # Data Output 
@@ -279,7 +343,6 @@ class CSVOutputNode():
     Saves generated data to a CSV file.
     '''
     def __init__(self, name:str):
-        super().__init__(name)
-    
+        self.name = name      
     def run(self):
         pass
