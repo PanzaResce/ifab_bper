@@ -8,6 +8,7 @@ class OutputProfiler(BaseModel):
     corr: str = Field(description="Correlations between columns")
     anomalies: str = Field(description="Anomalies in the data")
     warnings: str = Field(description="Warnings about data values limitations and ranges")
+
 class DataProfiler:
     def __init__(self, llm, df: pd.DataFrame, name="DataProfiler"):
         self.name= name

@@ -1,4 +1,7 @@
+import yaml, json
 from utils.state import DataframeCol, GlobalState, GeneratedRow
+from langchain_core.messages import SystemMessage, AIMessage
+from utils.prompts import GENERATOR_PROMPT, GENERATOR_FEEDBACK
 
 class Generator:
     def __init__(self, llm, tools: list = [], name = "Generator"):
@@ -8,29 +11,24 @@ class Generator:
         self.llm = llm.bind_tools(self.tools)
     
     def __call__(self, state: GlobalState):
-        schema = state.df_row_schema
         stats = state.stats
+
         if state.validation_errors != "":
-            feedback = f"The previous record you tried to generate gave an error, use this suggestion to improve the generation: {state.validation_errors}"
+            feedback = GENERATOR_FEEDBACK.format(error=state.validation_feedback.error, suggestion=state.validation_feedback.fix)
         else:
             feedback = ""
-        # print(f"SCHEMA:\n{schema}")
+        
+        schema = yaml.dump(state.df_row_schema, sort_keys=False, default_flow_style=False)
 
-        system_prompt = f"""
-        You are an agent that has to generate a new record for a dataframe.
-        The dataframe has the following schema, with the column names alongside their value type:\n{schema}.
-        Generate a new record complying with the given schema.
-        Consider also the statistical profile of the data provided: 
-        {stats}.
-        {feedback}
-        Just output the new record in csv format so it can be directly passed to another agent.
-        Do not produce code but just the new record."""
-        print(f"PROMPT\n{system_prompt}")
+        system_prompt = GENERATOR_PROMPT.format(schema=schema, feedback=feedback)
 
         agent_response = self.llm.with_structured_output(GeneratedRow).invoke(system_prompt)
-        print(f"Generator out\n{agent_response}")
-        # print(state)
-        # random_schema = self.generate_random_schema()
+        print(f"----------------GENERATOR----------------\n{agent_response}")
+        # print(type(agent_response))
+        
         iterations = state.iteration_count+1
 
-        return {"generated_row": agent_response, "iteration_count": iterations}
+        sys_msg = SystemMessage(system_prompt, name="Generator")
+        ai_resp = AIMessage(json.dumps(agent_response.generated_row), name="Generator")
+
+        return {"generated_row": agent_response, "iteration_count": iterations, "conversation_history": state.conversation_history + [sys_msg, ai_resp]}

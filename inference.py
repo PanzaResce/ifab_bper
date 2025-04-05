@@ -15,7 +15,7 @@ from agents.schema_analyzer import SchemaAnalyzer
 from agents.generator import Generator
 from agents.feedback import Feedback
 from agents.data_profiler import DataProfiler
-from utils.nodes import SchemaDescriptorNode, ValidityChecker
+from utils.nodes import SchemaDescriptor, ValidityChecker
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="")
@@ -76,24 +76,25 @@ def is_valid_record(record: dict, reference_df: pd.DataFrame, check_values: bool
 def create_graph(llm, df):
     builder = StateGraph(GlobalState)
     # analyzer = SchemaAnalyzer(llm, tools=[python_repl(df)])
-    analyzer = SchemaAnalyzer(llm)
+    # analyzer = SchemaAnalyzer(llm)
     profiler = DataProfiler(llm, df)
     generator = Generator(llm)
     validation_feedback = Feedback(llm)
-    schema_descriptor = SchemaDescriptorNode(df)
-    validity_checker = ValidityChecker(df, goto_if_false="validation_feedback_agent")
+    schema_descriptor = SchemaDescriptor(df)
+    validity_checker = ValidityChecker(df, goto_if_valid="__end__", goto_if_notvalid="validation_feedback_agent", max_iterations=5)
 
     # Define nodes: these do the work
     # builder.add_node("schema_analyzer", analyzer)
     builder.add_node("schema_descriptor", schema_descriptor)
-    builder.add_node("data_profiler", profiler)
+    # builder.add_node("data_profiler", profiler)
     builder.add_node("generator", generator)
     builder.add_node("validation_feedback_agent", validation_feedback)
     builder.add_node("validity_checker", validity_checker)
 
     builder.set_entry_point("schema_descriptor")
-    builder.add_edge("schema_descriptor", "data_profiler")
-    builder.add_edge("data_profiler", "generator")
+    # builder.add_edge("schema_descriptor", "data_profiler")
+    # builder.add_edge("data_profiler", "generator")
+    builder.add_edge("schema_descriptor", "generator")
     builder.add_edge("generator", "validity_checker")
     # builder.add_conditional_edges("generator", validity_checker, [END, "validation_feedback_agent"])
     builder.add_edge("validation_feedback_agent", "generator")

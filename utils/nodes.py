@@ -1,15 +1,19 @@
 import pandas as pd
+import yaml
 from utils.state import GlobalState
 from langgraph.types import Command
 from langgraph.graph import END
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeVar, Generic
+from enum import Enum
 
-class SchemaDescriptorNode():
+# GotoType = TypeVar("GotoType", bound=str)
+
+class SchemaDescriptor():
     def __init__(self, data, name="Boh"):
         self.name = name
         self.data = data
     
-    def __call__(self, state) -> pd.DataFrame:
+    def __call__(self, state: GlobalState) -> pd.DataFrame:
         
         dtype_mapping = {
             'object': 'str',
@@ -40,13 +44,16 @@ class SchemaDescriptorNode():
             self.data = self.castToDataFrame(self.data)
             
         friendly_dtypes = self.data.dtypes.replace(dtype_mapping)
-        friendly_dtypes_str = friendly_dtypes.to_string(header=False, index=True)
-        return {"df_row_schema": friendly_dtypes_str}
+        # friendly_dtypes_str = friendly_dtypes.to_string(header=False, index=True)
+        friendly_dtypes_dict = friendly_dtypes.to_dict()
+        return {"df_row_schema": friendly_dtypes_dict}
     
 class ValidityChecker():
-    def __init__(self, data, goto_if_false):
+    def __init__(self, data, goto_if_valid, goto_if_notvalid, max_iterations=2):
         self.data = data
-        self.goto_if_false = goto_if_false
+        self.goto_if_valid = goto_if_valid
+        self.goto_if_notvalid = goto_if_notvalid
+        self.max_iterations = max_iterations
 
     def __call__(self, state: GlobalState) -> Command[Literal["__end__", "validation_feedback_agent"]]:
         # print(state.generated_row.generated_row)
@@ -55,14 +62,14 @@ class ValidityChecker():
         generated_row = state.generated_row
         error = self.is_valid_record(generated_row.generated_row, self.data)
 
-        if error == "" or state.iteration_count > 2:
+        if error == "" or state.iteration_count > self.max_iterations:
             return Command(
-                goto=END
+                goto=self.goto_if_valid
             )
         else:
             return Command(
                 update={"validation_errors": error},
-                goto=self.goto_if_false
+                goto=self.goto_if_notvalid
             )
         
 
