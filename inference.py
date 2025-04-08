@@ -1,4 +1,4 @@
-import functools, argparse, kagglehub
+import functools, argparse, kagglehub, logging
 import pandas as pd
 import json
 from typing import Annotated
@@ -10,7 +10,7 @@ from langgraph.graph import MessagesState, StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
 from IPython.display import Image, display
 from utils.tools import python_repl
-from utils.state import GlobalState
+from utils.state import GeneratorSubgraphState
 from agents.schema_analyzer import SchemaAnalyzer
 from agents.generator import Generator
 from agents.feedback import Feedback
@@ -19,6 +19,20 @@ from utils.nodes import SchemaDescriptor, ValidityChecker
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="")
+        
+    parser.add_argument(
+        "--log-level",
+        default="ERROR",
+        choices=["DEBUG", "INFO", "ERROR"],
+        help="Set the logging level (default: ERROR)"
+    )
+
+    parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=5,
+        help="The maximum number of times the generator can produce erroneous records"
+    )
 
     args = parser.parse_args()
     return args
@@ -60,7 +74,7 @@ def is_valid_record(record: dict, reference_df: pd.DataFrame, check_values: bool
     
     return ""
 
-# def validity_checker(state: GlobalState, df):
+# def validity_checker(state: GeneratorSubgraphState, df):
 #     # print(state.generated_row.generated_row)
 #     print(f"NUM ITER: {state.iteration_count}")
 #     # print(df)
@@ -73,15 +87,15 @@ def is_valid_record(record: dict, reference_df: pd.DataFrame, check_values: bool
 #         print(f"ERROR: {state.validation_errors}")
 #         return "validation_feedback_agent"
 
-def create_graph(llm, df):
-    builder = StateGraph(GlobalState)
+def create_graph(llm, df, max_iterations):
+    builder = StateGraph(GeneratorSubgraphState)
     # analyzer = SchemaAnalyzer(llm, tools=[python_repl(df)])
     # analyzer = SchemaAnalyzer(llm)
     profiler = DataProfiler(llm, df)
     generator = Generator(llm)
     validation_feedback = Feedback(llm)
     schema_descriptor = SchemaDescriptor(df)
-    validity_checker = ValidityChecker(df, goto_if_valid="__end__", goto_if_notvalid="validation_feedback_agent", max_iterations=5)
+    validity_checker = ValidityChecker(df, goto_if_valid="__end__", goto_if_notvalid="validation_feedback_agent", max_iterations=max_iterations)
 
     # Define nodes: these do the work
     # builder.add_node("schema_analyzer", analyzer)
@@ -111,13 +125,15 @@ def create_graph(llm, df):
 
 if __name__ == "__main__":
     args = parse_arguments()
+    # model_name = "llama3.2"
+    model_name = "gemma3"
 
     df = import_dataframe("sgpjesus/bank-account-fraud-dataset-neurips-2022")
     # tools = get_tools(df)
-    llm = ChatOllama(model="llama3.2")
+    llm = ChatOllama(model=model_name)
     # llm = ChatOllama(model="llama3.2", base_url="http://172.30.96.1:11434")
 
-    graph = create_graph(llm, df)
+    graph = create_graph(llm, df, args.max_iterations)
     # messages = [HumanMessage(content="Generate a new row for the input dataset.")]
     # inputs = {"messages": [("user", "Generate a new row for the input dataset.")]}
     

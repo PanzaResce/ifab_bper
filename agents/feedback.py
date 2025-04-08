@@ -1,5 +1,6 @@
+import yaml
 from langchain_core.messages import SystemMessage, AIMessage
-from utils.state import DataframeCol, GlobalState, ValidationFeedback
+from utils.state import GeneratorSubgraphState, ValidationFeedback
 from utils.prompts import FEEDBACK_PROMPT
 
 class Feedback:
@@ -9,12 +10,13 @@ class Feedback:
         
         self.llm = llm.bind_tools(self.tools)
     
-    def __call__(self, state: GlobalState):
-        # print(f"ERROR STATE: {state}")
+    def __call__(self, state: GeneratorSubgraphState):
         # print(f"SCHEMA:\n{schema}")
 
-        system_prompt = FEEDBACK_PROMPT.format(errors=state.validation_errors, schema=state.df_row_schema)
-        print(f"FEEDBACK PROMPT: {system_prompt}")
+        err_record = yaml.dump(state.generated_row.row, sort_keys=False, default_flow_style=False)
+        schema = yaml.dump(state.df_row_schema, sort_keys=False, default_flow_style=False)
+        
+        system_prompt = FEEDBACK_PROMPT.format(record=err_record, schema=schema)
         agent_response = self.llm.with_structured_output(ValidationFeedback).invoke(system_prompt)
         print(f"----------------FEEDBACK----------------\n{agent_response}")
 

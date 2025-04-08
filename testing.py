@@ -1,4 +1,4 @@
-import functools, argparse, kagglehub
+import functools, argparse, kagglehub, logging
 import pandas as pd
 import json
 from typing import Annotated
@@ -11,12 +11,12 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from IPython.display import Image, display
 
 from utils.tools import python_repl
-from utils.state import GlobalState
+from utils.state import GeneratorSubgraphState
 from agents.schema_analyzer import SchemaAnalyzer
 from agents.generator import Generator
 from agents.feedback import Feedback
 from agents.data_profiler import DataProfiler
-from utils.nodes import SchemaDescriptorNode, ValidityChecker
+from utils.nodes import SchemaDescriptor, ValidityChecker
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="")
@@ -36,8 +36,8 @@ def import_dataframe(endpoint):
     return df
 
 def create_graph(llm, df):
-    builder = StateGraph(GlobalState)
-    schema_descriptor = SchemaDescriptorNode(df)
+    builder = StateGraph(GeneratorSubgraphState)
+    schema_descriptor = SchemaDescriptor(df)
     schema_analyzer = SchemaAnalyzer(llm)
     data_profiler = DataProfiler(llm, df)
     generator = Generator(llm)

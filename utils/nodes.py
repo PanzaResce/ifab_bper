@@ -1,6 +1,6 @@
 import pandas as pd
 import yaml
-from utils.state import GlobalState
+from utils.state import GeneratorSubgraphState
 from langgraph.types import Command
 from langgraph.graph import END
 from typing_extensions import Literal, TypeVar, Generic
@@ -13,7 +13,7 @@ class SchemaDescriptor():
         self.name = name
         self.data = data
     
-    def __call__(self, state: GlobalState) -> pd.DataFrame:
+    def __call__(self, state: GeneratorSubgraphState) -> pd.DataFrame:
         
         dtype_mapping = {
             'object': 'str',
@@ -46,7 +46,9 @@ class SchemaDescriptor():
         friendly_dtypes = self.data.dtypes.replace(dtype_mapping)
         # friendly_dtypes_str = friendly_dtypes.to_string(header=False, index=True)
         friendly_dtypes_dict = friendly_dtypes.to_dict()
-        return {"df_row_schema": friendly_dtypes_dict}
+        random_record = self.data.sample().to_dict("records")[0]
+
+        return {"df_row_schema": friendly_dtypes_dict, "example": random_record}
     
 class ValidityChecker():
     def __init__(self, data, goto_if_valid, goto_if_notvalid, max_iterations=2):
@@ -55,12 +57,11 @@ class ValidityChecker():
         self.goto_if_notvalid = goto_if_notvalid
         self.max_iterations = max_iterations
 
-    def __call__(self, state: GlobalState) -> Command[Literal["__end__", "validation_feedback_agent"]]:
+    def __call__(self, state: GeneratorSubgraphState) -> Command[Literal["__end__", "validation_feedback_agent"]]:
         # print(state.generated_row.generated_row)
         print(f"NUM ITER: {state.iteration_count}")
         # print(df)
-        generated_row = state.generated_row
-        error = self.is_valid_record(generated_row.generated_row, self.data)
+        error = self.is_valid_record(state.generated_row.row, self.data)
 
         if error == "" or state.iteration_count > self.max_iterations:
             return Command(

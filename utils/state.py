@@ -3,31 +3,20 @@ from typing import List, Any, Dict, Optional, Annotated
 from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
 
-class DataframeCol(BaseModel):
-    column_name: str = Field(description="The name of the column")
-    column_descr: str = Field(description="The description of the column")
-    column_type: str = Field(description="The data type of the column")
-
-class DataframeSchema(BaseModel):
-    df_schema: List[DataframeCol] = Field(
-        description="The schema of the dataframe.",
-    )
-
 class GeneratedRow(BaseModel):
-    generated_row: Dict[str, str] = Field(description="The generated row, containing the column names alongside their corresponding values.")
+    row: Dict[str, str] = Field(description="The generated row, containing the column names alongside their corresponding values.")
 
 class ValidationFeedback(BaseModel):
-    error: str = Field(description="What is the error of the generated row")
-    fix: str = Field(description="How to fix the error")
+    wrong_columns: Dict[str, str] = Field(description="Which fields were wrongly generated alongside why are they wrong.")
 
-class GlobalState(BaseModel):
-    # df_row_schema: Optional [DataframeSchema] = Field(
-    #     description="The schema of the dataframe",
-    #     default=""
-    # )
+class GeneratorSubgraphState(BaseModel):
     df_row_schema: Optional [Dict[str, str]] = Field(
         description="The schema of the dataframe, containing the column names alongside their value type",
         default={})
+    example: Optional [Dict[str, str]] = Field(
+        description="An example of a randomly sampled record",
+        default={}
+    )
     stats: Optional [Any] = Field(
         description="Statistical profile of the data to guide generation",
         default={})

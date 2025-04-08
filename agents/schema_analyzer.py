@@ -1,5 +1,5 @@
 from faker import Faker
-from utils.state import DataframeCol, GlobalState
+from utils.state import GeneratorSubgraphState
 from langchain_core.messages import SystemMessage
 
 class SchemaAnalyzer:
@@ -9,11 +9,11 @@ class SchemaAnalyzer:
         
         self.llm = llm.bind_tools(self.tools)
     
-    def __call__(self, state: GlobalState):
+    def __call__(self, state: GeneratorSubgraphState):
         """
         This function is called by the graph to analyze the schema of the dataframe.
         Args:
-            state (GlobalState): The global state of the graph.
+            state (GeneratorSubgraphState): The global state of the graph.
             llm: Instance of the language model to use.
         Returns:
             dict: A dictionary containing the schema of the dataframe.
@@ -60,12 +60,4 @@ class SchemaAnalyzer:
     def generate_random_schema(self, num_columns: int = 2):
         """Generate random schema """
         fake = Faker()
-        
-        mock_data = [
-            DataframeCol(
-                column_name=f"col_{i}",
-                column_descr=fake.sentence(),
-                column_type=fake.random_element(["int", "float", "str", "bool"]),
-            ) for i in range(num_columns)
-        ]
-        return mock_data
+        pass

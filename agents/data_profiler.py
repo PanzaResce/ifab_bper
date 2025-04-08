@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from pydantic import BaseModel, Field
-from utils.state import GlobalState
+from utils.state import GeneratorSubgraphState
 import pandas as pd
 
 class OutputProfiler(BaseModel):
@@ -16,14 +16,9 @@ class DataProfiler:
         self.df = df
         self.numeric_precision = 4
     
-    def __call__(self, state: GlobalState):
+    def __call__(self, state: GeneratorSubgraphState):
         stats = self._calculate_basic_stats(self.df)
         llm_insights = self._llm_insights(self.df, self.llm, stats)
-        '''stats_mock = {
-            "name": {"unique": True, "most_common": "John Doe"},
-            "age": {"min": 18, "max": 90, "mean": 45},
-            "email": {"unique": True, "pattern": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"},
-        }'''
         return {"stats": llm_insights}
 
     def _calculate_basic_stats(self, df: pd.DataFrame):
