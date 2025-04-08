@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
-from typing import List, Any, Dict, Optional, Annotated
+from typing import List, Any, Dict, Optional
 from langchain_core.messages import AnyMessage
-from langgraph.graph import add_messages
 
 class GeneratedRow(BaseModel):
     row: Dict[str, str] = Field(description="The generated row, containing the column names alongside their corresponding values.")
@@ -15,8 +14,7 @@ class GeneratorSubgraphState(BaseModel):
         default={})
     example: Optional [Dict[str, str]] = Field(
         description="An example of a randomly sampled record",
-        default={}
-    )
+        default={})
     stats: Optional [Any] = Field(
         description="Statistical profile of the data to guide generation",
         default={})
@@ -28,9 +26,6 @@ class GeneratorSubgraphState(BaseModel):
         default="")
     validation_feedback: Optional[ValidationFeedback] = Field(
         description="Feedback to fix the generated row",
-        default="")
-    plausibility_feedback: Optional[str] = Field(
-        description="Natural language guidance from plausibility checker suggesting improvements to the synthetic row",
         default="")
     conversation_history: Optional[List[AnyMessage]] = []
     iteration_count: Optional[int] = Field(

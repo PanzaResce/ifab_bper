@@ -1,10 +1,9 @@
 import pandas as pd
-import yaml
+import os, csv
 from utils.state import GeneratorSubgraphState
 from langgraph.types import Command
 from langgraph.graph import END
-from typing_extensions import Literal, TypeVar, Generic
-from enum import Enum
+from typing_extensions import Literal
 
 # GotoType = TypeVar("GotoType", bound=str)
 
@@ -51,28 +50,49 @@ class SchemaDescriptor():
         return {"df_row_schema": friendly_dtypes_dict, "example": random_record}
     
 class ValidityChecker():
-    def __init__(self, data, goto_if_valid, goto_if_notvalid, max_iterations=2):
+    def __init__(self, data, goto_if_valid, goto_if_notvalid, goto_if_maxiter, max_iterations=2):
         self.data = data
         self.goto_if_valid = goto_if_valid
         self.goto_if_notvalid = goto_if_notvalid
+        self.goto_if_maxiter = goto_if_maxiter
         self.max_iterations = max_iterations
-
+    
     def __call__(self, state: GeneratorSubgraphState) -> Command[Literal["__end__", "validation_feedback_agent"]]:
         # print(state.generated_row.generated_row)
-        print(f"NUM ITER: {state.iteration_count}")
         # print(df)
-        error = self.is_valid_record(state.generated_row.row, self.data)
+        new_row = state.generated_row.row
+        error = self.is_valid_record(new_row, self.data)
 
-        if error == "" or state.iteration_count > self.max_iterations:
+        if error == "" and state.iteration_count <= self.max_iterations:
+            print("Record is valid")
+            self.save_to_file(new_row)
             return Command(
                 goto=self.goto_if_valid
             )
+        elif state.iteration_count > self.max_iterations:
+            print(f"Max iteration reached: {state.iteration_count}/{self.max_iterations}")
+            return Command(
+                goto=self.goto_if_maxiter
+            )
         else:
+            print(f"Record is NOT valid\nIter: {state.iteration_count}/{self.max_iterations}")
             return Command(
                 update={"validation_errors": error},
                 goto=self.goto_if_notvalid
             )
-        
+
+    def save_to_file(self, new_row):
+        filename = 'synth_dataframe.csv'
+
+        file_exists = os.path.isfile(filename)
+
+        with open(filename, 'a', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=new_row.keys())
+
+            if not file_exists:
+                writer.writeheader()
+
+            writer.writerow(new_row)
 
     def is_valid_record(self, record: dict, reference_df: pd.DataFrame, check_values: bool = False) -> bool:
         """
