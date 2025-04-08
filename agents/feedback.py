@@ -11,7 +11,6 @@ class Feedback:
         self.llm = llm.bind_tools(self.tools)
     
     def __call__(self, state: GeneratorSubgraphState):
-        # print(f"SCHEMA:\n{schema}")
 
         err_record = yaml.dump(state.generated_row.row, sort_keys=False, default_flow_style=False)
         schema = yaml.dump(state.df_row_schema, sort_keys=False, default_flow_style=False)
@@ -20,7 +19,6 @@ class Feedback:
         agent_response = self.llm.with_structured_output(ValidationFeedback).invoke(system_prompt)
         print(f"----------------FEEDBACK----------------\n{agent_response}")
 
-        # random_schema = self.generate_random_schema()
         
         sys_msg = SystemMessage(system_prompt, name="Feedback")
         ai_resp = AIMessage(agent_response.model_dump_json())

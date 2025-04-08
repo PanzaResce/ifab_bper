@@ -14,7 +14,7 @@ class Generator:
 
         if state.validation_errors != "":
             wrong_cols = yaml.dump(state.validation_feedback.wrong_columns, sort_keys=False, default_flow_style=False)
-            print(f"----------------WRONG COLUMNS----------------\n{wrong_cols}")
+            # print(f"----------------WRONG COLUMNS----------------\n{wrong_cols}")
             feedback = GENERATOR_FEEDBACK.format(wrong_columns=wrong_cols)
         else:
             feedback = ""

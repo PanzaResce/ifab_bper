@@ -60,11 +60,11 @@ class ValidityChecker():
     def __call__(self, state: GeneratorSubgraphState) -> Command[Literal["__end__", "validation_feedback_agent"]]:
         # print(state.generated_row.generated_row)
         # print(df)
-        print(f"Iter: {state.iteration_count}/{self.max_iterations}")
         new_row = state.generated_row.row
         error = self.is_valid_record(new_row, self.data)
 
         if error == "" and state.iteration_count <= self.max_iterations:
+            print("Record is valid")
             self.save_to_file(new_row)
             return Command(
                 goto=self.goto_if_valid
@@ -75,6 +75,7 @@ class ValidityChecker():
                 goto=self.goto_if_maxiter
             )
         else:
+            print(f"Record is NOT valid\nIter: {state.iteration_count}/{self.max_iterations}")
             return Command(
                 update={"validation_errors": error},
                 goto=self.goto_if_notvalid
