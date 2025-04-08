@@ -1,20 +1,12 @@
-import functools, argparse, kagglehub, logging
+import argparse, kagglehub
 import pandas as pd
 import json
-from typing import Annotated
-from langchain_core.tools import Tool
-from langchain_experimental.utilities import PythonREPL
 from langchain_ollama import ChatOllama
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langgraph.graph import MessagesState, StateGraph, START, END
-from langgraph.prebuilt import ToolNode, tools_condition
-from IPython.display import Image, display
+from langgraph.graph import StateGraph, START, END
 from utils.tools import python_repl
 from utils.state import GeneratorSubgraphState
-from agents.schema_analyzer import SchemaAnalyzer
 from agents.generator import Generator
 from agents.feedback import Feedback
-from agents.data_profiler import DataProfiler
 from utils.nodes import SchemaDescriptor, ValidityChecker
 
 def parse_arguments():
@@ -32,6 +24,13 @@ def parse_arguments():
         type=int,
         default=5,
         help="The maximum number of times the generator can produce erroneous records"
+    )
+
+    parser.add_argument(
+        "--num",
+        type=int,
+        default=5,
+        help="How many new rows to generate "
     )
 
     args = parser.parse_args()
@@ -74,28 +73,14 @@ def is_valid_record(record: dict, reference_df: pd.DataFrame, check_values: bool
     
     return ""
 
-# def validity_checker(state: GeneratorSubgraphState, df):
-#     # print(state.generated_row.generated_row)
-#     print(f"NUM ITER: {state.iteration_count}")
-#     # print(df)
-#     generated_row = state.generated_row
-#     error = is_valid_record(generated_row.generated_row, df)
-#     if error == "" or state.iteration_count > 2:
-#         return END
-#     else:
-#         state.validation_errors = error
-#         print(f"ERROR: {state.validation_errors}")
-#         return "validation_feedback_agent"
-
 def create_graph(llm, df, max_iterations):
     builder = StateGraph(GeneratorSubgraphState)
-    # analyzer = SchemaAnalyzer(llm, tools=[python_repl(df)])
     # analyzer = SchemaAnalyzer(llm)
-    profiler = DataProfiler(llm, df)
+    # profiler = DataProfiler(llm, df)
     generator = Generator(llm)
     validation_feedback = Feedback(llm)
     schema_descriptor = SchemaDescriptor(df)
-    validity_checker = ValidityChecker(df, goto_if_valid="__end__", goto_if_notvalid="validation_feedback_agent", max_iterations=max_iterations)
+    validity_checker = ValidityChecker(df, goto_if_valid="__end__", goto_if_maxiter="__end__", goto_if_notvalid="validation_feedback_agent", max_iterations=max_iterations)
 
     # Define nodes: these do the work
     # builder.add_node("schema_analyzer", analyzer)
@@ -106,14 +91,10 @@ def create_graph(llm, df, max_iterations):
     builder.add_node("validity_checker", validity_checker)
 
     builder.set_entry_point("schema_descriptor")
-    # builder.add_edge("schema_descriptor", "data_profiler")
-    # builder.add_edge("data_profiler", "generator")
     builder.add_edge("schema_descriptor", "generator")
     builder.add_edge("generator", "validity_checker")
-    # builder.add_conditional_edges("generator", validity_checker, [END, "validation_feedback_agent"])
     builder.add_edge("validation_feedback_agent", "generator")
 
-    # builder.add_edge("generator", END)
 
     graph = builder.compile()
     img_data = graph.get_graph(xray=True).draw_mermaid_png()
@@ -129,15 +110,12 @@ if __name__ == "__main__":
     model_name = "gemma3"
 
     df = import_dataframe("sgpjesus/bank-account-fraud-dataset-neurips-2022")
-    # tools = get_tools(df)
     llm = ChatOllama(model=model_name)
-    # llm = ChatOllama(model="llama3.2", base_url="http://172.30.96.1:11434")
 
     graph = create_graph(llm, df, args.max_iterations)
-    # messages = [HumanMessage(content="Generate a new row for the input dataset.")]
-    # inputs = {"messages": [("user", "Generate a new row for the input dataset.")]}
     
-    output = graph.invoke({})
+    for _ in range(args.num):
+        output = graph.invoke({})
     
     with open("graph_output.log", "w") as f:
         json_output = json.dumps(output, indent=4, default=to_serializable)
