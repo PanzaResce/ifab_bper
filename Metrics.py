@@ -2,6 +2,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import ks_2samp, chi2_contingency
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix, roc_auc_score, roc_curve
+import numpy as np
+
+
 
 class Metrics:
     def __init__(self):
@@ -190,7 +195,7 @@ class Metrics:
 
         unite_conLabel = self.aggiungi_label(dataR, dataS)
         self.evaluate_similarity(unite_conLabel, cat_vars)
-        
+
         print("Statistiche descrittive - Reali")
         print(self._descr_quant(dataRquant))
         print("\nStatistiche descrittive - Sintetici")
@@ -198,7 +203,7 @@ class Metrics:
 
         self._plot_dist(dataSquant, dataRquant)
         self._test_ks(dataRquant, dataSquant, quant_vars)
-        self._plot_categ(dataRcat, dataScat, cat_vars)
+        #self._plot_categ(dataRcat, dataScat, cat_vars)
 
         chi2_results = self._test_chi2(dataRcat, dataScat, cat_vars)
         print("\nRisultati test Chi-quadro:")
